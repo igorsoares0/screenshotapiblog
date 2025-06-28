@@ -1,0 +1,313 @@
+---
+title: 'How to take screenshots with Puppeteer'
+date: '2025-06-15'
+tags: ['writings', 'reflection']
+draft: false
+summary: Take screenshots with puppeteer
+---
+
+Puppeteer is a powerful browser automation library developed by the Chrome DevTools team, designed to control and interact with web browsers through Node.js scripts. It automates Chrome and Chromium using the DevTools protocol, allowing users to perform a wide variety of actions programmatically. Among its many features, one of them is taking screenshots, and that's what we'll learn today!
+
+## How to Install Puppeteer
+
+First, you must make sure you have Node.js and npm/yarn installed on your machine.
+
+After installing the mentioned tools, you should create a project in a file called `screenshot.js`, for example.
+
+Inside this file in the terminal, you can then type:
+
+```bash
+npm install puppeteer
+```
+
+And then, inside `screenshot.js`:
+
+```javascript
+const puppeteer = require('puppeteer');
+
+(async () => {
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.goto('https://example.com');
+  await page.screenshot({ path: 'example.png' });
+  await browser.close();
+})();
+```
+
+After that, just run the command `node screenshot.js` in your terminal and you're done! You'll have taken your first screenshot.
+
+## Some Advanced Options
+
+### Taking a screenshot of the full page:
+```javascript
+await page.screenshot({ path: 'fullpage.png', fullPage: true });
+```
+
+### Setting viewport dimensions:
+```javascript
+await page.setViewport({ width: 1280, height: 800 });
+```
+
+### Choosing JPEG and PNG format:
+```javascript
+await page.screenshot({ path: 'screenshot.jpg', type: 'jpeg', quality: 80 });
+```
+
+### Cropping a specific region of the document:
+```javascript
+await page.screenshot({
+  path: 'clip.png',
+  clip: { x: 0, y: 0, width: 800, height: 600 },
+});
+```
+
+### Taking bulk screenshots:
+```javascript
+const urls = ['https://example.com', 'https://example.org'];
+
+for (const url of urls) {
+  await page.goto(url);
+  const fileName = url.replace(/https?:\/\//, '').replace(/\W/g, '_');
+  await page.screenshot({ path: `${fileName}.png` });
+}
+```
+
+## Common Errors
+
+There are some problems that many developers encounter when trying to use Puppeteer for this purpose. Here are the main ones and how to solve them:
+
+- **TimeoutError: Navigation Timeout Exceeded**: This means navigation took longer than stipulated to load the page. You can increase the timeout through `waitUntil`.
+- **Chromium won't open**: Usually a problem with permissions or environment variables, make sure everything is working correctly.
+- **Blank page**: Wait for elements to load on the page before taking the screenshot.
+
+## Blocking Ads
+
+There are many ways to block ads with this tool, you should choose the way that makes the most sense for your needs. Let's mention the main ones here:
+
+### 1. Domain Blocking:
+This technique is the most recommended. You basically maintain a list of known ad server domains and cancel requests made to those domains. Here's a code example:
+
+```javascript
+const puppeteer = require('puppeteer');
+
+async function blockAds() {
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+
+  // List of known ad domains
+  const adDomains = [
+    'googleads.g.doubleclick.net',
+    'pagead2.googlesyndication.com',
+    'adservice.google.com',
+    'ads.adthrive.com',
+    'amazon-adsystem.com',
+    // Add more domains as needed
+  ];
+
+  await page.setRequestInterception(true);
+
+  page.on('request', (request) => {
+    const url = request.url();
+    const isAd = adDomains.some(domain => url.includes(domain));
+
+    if (isAd) {
+      request.abort();
+    } else {
+      request.continue();
+    }
+  });
+
+  await page.goto('https://www.example.com'); // Replace with desired URL
+
+  // Do other actions on the page here...
+
+  await browser.close();
+}
+
+blockAds();
+```
+
+### 2. Blocking by Keywords in URL:
+Very similar to the technique mentioned above, but blocking is based on keywords found in the domain's URL itself.
+
+### 3. Blocking by Resource Type (be careful):
+Another tactic would be to prevent loading of elements commonly used in ads, for example, images and code from dubious origin sites. However, this option is more radical and may eventually compromise the proper functioning of certain web pages.
+
+## How to Use Proxies with Puppeteer
+
+To add a proxy to Puppeteer, you need to make some changes to the Chromium browser startup settings, pointing it to the proxy server you want to use. There are two main ways to configure this:
+
+### 1. Using the `--proxy-server` Command Line Parameter:
+
+The most common method to set a proxy is to add the `--proxy-server` parameter when starting the browser. This parameter requires the proxy server address and port.
+
+```javascript
+const puppeteer = require('puppeteer');
+
+async function useProxy() {
+  const browser = await puppeteer.launch({
+    args: ['--proxy-server=http://YOUR_PROXY_IP:YOUR_PROXY_PORT'],
+  });
+  const page = await browser.newPage();
+  await page.goto('https://www.whatsmyip.org/'); // A site to check your IP
+  await page.screenshot({ path: 'my_ip_with_proxy.png' });
+  await browser.close();
+}
+
+useProxy();
+```
+
+Replace `http://YOUR_PROXY_IP:YOUR_PROXY_PORT` with the real address and port of your proxy server. The protocol (like http://, https://, or socks5://) can change depending on the type of proxy you use.
+
+Here are examples of how to configure different proxies:
+
+- **HTTP Proxy**: `--proxy-server=http://10.10.1.10:3128`
+- **HTTPS Proxy**: `--proxy-server=https://10.10.1.10:3129`
+- **SOCKS5 Proxy**: `--proxy-server=socks5://10.10.1.10:1080`
+
+### 2. Using Proxy with Authentication (Username and Password):
+
+If your proxy requires authentication, you'll need to use the `page.authenticate()` method after creating a new page.
+
+```javascript
+const puppeteer = require('puppeteer');
+
+async function useAuthenticatedProxy() {
+  const browser = await puppeteer.launch({
+    args: ['--proxy-server=http://YOUR_PROXY_IP:YOUR_PROXY_PORT'],
+  });
+  const page = await browser.newPage();
+
+  await page.authenticate({ username: 'YOUR_USERNAME', password: 'YOUR_PASSWORD' });
+  await page.goto('https://www.whatsmyip.org/');
+  await page.screenshot({ path: 'my_ip_with_authenticated_proxy.png' });
+  await browser.close();
+}
+
+useAuthenticatedProxy();
+```
+
+Replace `YOUR_PROXY_IP`, `YOUR_PROXY_PORT`, `YOUR_USERNAME`, and `YOUR_PASSWORD` with the correct data from your proxy.
+
+### Complete Procedure:
+
+1. **Include Puppeteer**: `const puppeteer = require('puppeteer');`
+2. **Start the Browser With the `--proxy-server` Parameter**:
+   - Use the `args` key within the `puppeteer.launch()` configuration options.
+   - Add the phrase `--proxy-server=YOUR_PROXY_TYPE://YOUR_IP:YOUR_PORT` to the parameter list.
+3. **Open a New Tab**: `const page = await browser.newPage();`
+4. **Authenticate with the Proxy (if needed)**:
+   - Before accessing the page, use `await page.authenticate({ username: '...', password: '...' });`
+5. **Access the Target Web Address**: `await page.goto('https://your-url.com');`
+6. **Execute Necessary Operations**: Continue with your Puppeteer logic.
+7. **Close the Browser**: `await browser.close();`
+
+With these steps, it's simple to configure Puppeteer to use a proxy server when automating browser actions.
+
+## Generating a PDF
+
+If you want to capture a page as a PDF using Puppeteer, the `page.pdf()` method is the ideal solution. It comes with various options that allow you to customize the PDF output the way you need.
+
+Here's a simple example of how to do this:
+
+```javascript
+const puppeteer = require('puppeteer');
+
+async function generatePdf() {
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.goto('https://www.example.com', { waitUntil: 'networkidle2' }); // Wait for page to load completely
+
+  await page.pdf({ path: 'example.pdf', format: 'A4' });
+
+  await browser.close();
+}
+
+generatePdf();
+```
+
+### Code Explanation:
+
+- `const puppeteer = require('puppeteer');`: Here, we're importing the Puppeteer library, which is super useful for browser automation.
+- `async function generatePdf() { ... }`: We're defining an asynchronous function that will handle Puppeteer operations.
+- `const browser = await puppeteer.launch();`: This starts a new Chromium browser instance, which is what we'll use.
+- `const page = await browser.newPage();`: Here, we're creating a new page within the browser.
+- `await page.goto('https://www.example.com', { waitUntil: 'networkidle2' });`: This line navigates to the URL we chose. The `waitUntil: 'networkidle2'` option is really cool because it ensures the page is fully loaded, waiting for no more than two network requests to be in progress for at least 500ms. This helps ensure all page resources are ready before we generate the PDF.
+- `await page.pdf({ path: 'example.pdf', format: 'A4' });`: This is the method that actually generates the PDF.
+  - `path: 'example.pdf'`: Here, we're specifying where and with what name the PDF will be saved.
+  - `format: 'A4'`: We're setting the PDF page size to A4, but you can also choose other formats like 'Letter', 'Legal', 'Tabloid', and so on.
+- `await browser.close();`: Finally, this line closes the Puppeteer browser instance.
+- `generatePdf();`: And here we call the function to start the process.
+
+## Using Our API to Take Screenshots
+
+Now you will learn to take screenshots using our REST API.
+
+The `/api/screenshot` endpoint accepts POST requests where you can include a JSON with the following fields:
+
+```json
+{
+  "url": "https://example.com",       // (Required)
+  "width": 1280,                      // (Optional, default: 1280)
+  "height": 720,                      // (Optional, default: 720)
+  "format": "png",                    // png, jpeg or pdf
+  "quality": 80,                      // (JPEG only)
+  "full_page": false,                 // (Captures full page if true)
+  "block_ads": false,                 // (Blocks ads and trackers)
+  "api_key": "your_api_key_here"      // (Or use in header)
+}
+```
+
+To use the API, you need to authenticate. There are two ways to provide your key:
+
+**In the header:**
+```
+X-API-Key: your_api_key_here
+```
+
+**Or, within the request data:**
+```json
+"api_key": "your_api_key_here"
+```
+
+Here's an example using Node.js:
+
+```javascript
+const fetch = require('node-fetch');
+const fs = require('fs');
+
+async function takeScreenshot() {
+  const apiKey = 'your_api_key_here';
+  const response = await fetch('https://yourapi.com/api/screenshot', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': apiKey
+    },
+    body: JSON.stringify({
+      url: 'https://example.com',
+      width: 1280,
+      height: 800,
+      format: 'png',
+      full_page: true,
+      block_ads: true
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error('Error:', errorData);
+    return;
+  }
+
+  const buffer = await response.buffer();
+  fs.writeFileSync('screenshot.png', buffer);
+  console.log('Screenshot saved as screenshot.png');
+}
+
+takeScreenshot();
+```
+
+With this amazing API, you can easily automate high-quality screenshot capture. It supports long pages, allows PDF export, and even blocks ads. It's a super powerful tool for any SaaS application or automation project.
+
+Ready to take the first step? Go to the Dashboard tab, get your API key, and start capturing today!
